@@ -19,6 +19,13 @@ COPY src ./src
 # tsc directly rather than going through it.
 RUN npx tsc && npm prune --omit=dev
 
+# Sync module (autonomous WHOOP→Supabase cron). Installs its own prod deps
+# (tsx, pg, dotenv); the compiled dist/ above is imported by the decompose layer.
+COPY sync/package.json sync/package-lock.json ./sync/
+RUN cd sync && npm ci --omit=dev
+COPY sync/src ./sync/src
+COPY sync/supabase ./sync/supabase
+
 # ─── runtime stage ─────────────────────────────────────────────────────────
 FROM node:24-alpine AS runtime
 WORKDIR /app
@@ -29,6 +36,8 @@ USER node
 COPY --chown=node:node --from=builder /app/node_modules ./node_modules
 COPY --chown=node:node --from=builder /app/dist ./dist
 COPY --chown=node:node --from=builder /app/package.json ./
+# Sync module + its deps (the cron service runs `npm --prefix sync run sync`).
+COPY --chown=node:node --from=builder /app/sync ./sync
 
 # These three env vars are required at runtime. Set them via your host's
 # secrets mechanism (`fly secrets set`, Railway env, docker run -e, etc.):
@@ -50,4 +59,6 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/health || exit 1
 
-CMD ["node", "dist/server.js"]
+# Runs the MCP server (spawns `node dist/server.js`) + the daily in-process sync.
+# Falls back to server-only if WHOOP_SYNC_ENABLED!=1 (sync needs a Postgres URL).
+CMD ["sync/node_modules/.bin/tsx", "sync/src/cli.ts", "serve"]

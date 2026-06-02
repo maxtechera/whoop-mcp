@@ -1,0 +1,31 @@
+{
+  "name": "whoop-sync",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Autonomous WHOOP → Supabase data-ownership sync (granular, zero-loss). Runs as remote cron infra; reuses the whoop-mcp client as a library.",
+  "bin": {
+    "whoop-sync": "./src/cli.ts",
+    "whoop-db": "./src/db-cli.ts"
+  },
+  "scripts": {
+    "discover": "tsx src/cli.ts discover",
+    "backfill": "tsx src/cli.ts backfill",
+    "sync": "tsx src/cli.ts sync",
+    "migrate": "tsx src/cli.ts migrate",
+    "audit": "tsx src/cli.ts audit",
+    "verify": "tsx src/cli.ts verify",
+    "db": "tsx src/db-cli.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "pg": "^8.21.0",
+    "tsx": "^4.22.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.12.4",
+    "@types/pg": "^8.20.0",
+    "typescript": "^6.0.3"
+  }
+}

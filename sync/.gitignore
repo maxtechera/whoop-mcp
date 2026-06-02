@@ -1,0 +1,9 @@
+node_modules/
+.env
+# Raw personal API responses + example-bearing shape files (reproducible via `whoop-sync discover`).
+fixtures/
+schema/*.shape.json
+
+# supabase CLI local state
+supabase/.temp/
+supabase/.branches/

@@ -33,6 +33,21 @@
 
 ---
 
+## 🗄️ This fork adds: own your WHOOP data in Supabase
+
+A **sync → Supabase → read** layer on top of the MCP: an autonomous job syncs the WHOOP API into a Postgres schema **you own** (raw stored verbatim), and a CLI (`whoop-db`) reads it back with the **same shape the MCP returns** — offline, over your full history. The live MCP (below) stays for real-time values.
+
+```bash
+cd sync && npm install && npm run migrate && npm run backfill   # own your history
+npm run db -- today                                             # query it, MCP-style, from your DB
+```
+
+→ **[docs/SETUP.md](./docs/SETUP.md)** (15-min guide) · **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** · **[docs/DEPLOY.md](./docs/DEPLOY.md)** (autonomous hourly sync)
+
+*This fork (the [`sync/`](./sync/) module + docs) builds on the upstream MCP ([briangaoo/whoop-mcp](https://github.com/briangaoo/whoop-mcp)) and is MIT-licensed like it. The MCP documentation below is unchanged.*
+
+---
+
 ## Table of contents
 
 1. [Get Started](#get-started)

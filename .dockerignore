@@ -1,6 +1,11 @@
 node_modules
+**/node_modules
 dist
 .env
+**/.env
+sync/fixtures
+sync/schema
+sync/supabase/.temp
 .git
 .gitignore
 .vitest-cache

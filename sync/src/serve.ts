@@ -16,9 +16,35 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 // Sync cadence: default hourly. Override with WHOOP_SYNC_INTERVAL_MIN.
 const INTERVAL_MS = Math.max(5, Number(process.env.WHOOP_SYNC_INTERVAL_MIN ?? 60)) * 60_000;
 
+const hasDb = (): boolean =>
+  Boolean(process.env.POSTGRES_URL_NON_POOLING || process.env.DATABASE_URL || process.env.POSTGRES_URL);
+
+// The MCP child uses WHOOP_TOKEN_STORE=memory seeded from WHOOP_* env vars,
+// which Railway froze at deploy time. After the ~30-day refresh-token rotation
+// any restart would boot the server with a dead token ("Refresh Token has
+// expired") while the sync — which persists rotations in whoop.auth_tokens —
+// kept working. Seed the child from the same row instead, so restarts pick up
+// the live pair. Env vars stay as the fallback when the row is absent.
+async function tokenEnvFromDb(): Promise<Record<string, string>> {
+  if (!hasDb()) return {};
+  try {
+    const { query } = await import("./db.js");
+    const rows = await query<{ email: string; access_token: string; refresh_token: string }>(
+      `select email, access_token, refresh_token from whoop.auth_tokens where provider = 'whoop'`,
+    );
+    const r = rows[0];
+    if (!r) return {};
+    console.log("[serve] seeding MCP server tokens from whoop.auth_tokens");
+    return { WHOOP_EMAIL: r.email, WHOOP_IOS_BEARER_TOKEN: r.access_token, WHOOP_COGNITO_REFRESH_TOKEN: r.refresh_token };
+  } catch (e) {
+    console.error("[serve] could not read whoop.auth_tokens, falling back to env:", e instanceof Error ? e.message : e);
+    return {};
+  }
+}
+
 export async function serve(): Promise<void> {
-  // 1) MCP server — identical invocation to the original CMD.
-  const server = spawn("node", ["dist/server.js"], { cwd: REPO_ROOT, stdio: "inherit" });
+  // 1) MCP server — identical invocation to the original CMD, tokens from the DB when present.
+  const server = spawn("node", ["dist/server.js"], { cwd: REPO_ROOT, stdio: "inherit", env: { ...process.env, ...(await tokenEnvFromDb()) } });
   server.on("exit", (code) => {
     console.error(`[serve] MCP server exited (code ${code}) — exiting so Railway restarts.`);
     process.exit(code ?? 1);
@@ -31,8 +57,7 @@ export async function serve(): Promise<void> {
   process.on("SIGINT", () => shutdown("SIGINT"));
 
   // 2) Daily sync (best-effort; isolated).
-  const hasDb = process.env.POSTGRES_URL_NON_POOLING || process.env.DATABASE_URL || process.env.POSTGRES_URL;
-  if (process.env.WHOOP_SYNC_ENABLED !== "1" || !hasDb) {
+  if (process.env.WHOOP_SYNC_ENABLED !== "1" || !hasDb()) {
     console.log("[serve] sync disabled (need WHOOP_SYNC_ENABLED=1 + a Postgres URL); serving MCP only.");
     return;
   }

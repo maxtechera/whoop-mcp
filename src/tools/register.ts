@@ -61,6 +61,8 @@ import { registerHrZones } from "./v2/hr_zones.js";
 import { registerHrZonesSet } from "./v2/hr_zones_set.js";
 import { registerProfileUpdate } from "./v2/profile_update.js";
 import { registerHiddenMetric } from "./v2/hidden_metric.js";
+// Health context
+import { registerHealth } from "./v2/health.js";
 // Escape
 import { registerRaw } from "./v2/raw.js";
 import { registerEndpoints } from "./v2/endpoints.js";
@@ -115,6 +117,7 @@ export function registerTools(server: McpServer, client: WhoopClient): void {
   registerHiddenMetric(server, client);
   registerCoachAsk(server, client);
   // Escape (2)
+  registerHealth(server, client);
   registerRaw(server, client);
   registerEndpoints(server, client);
 }

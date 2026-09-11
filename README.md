@@ -27,7 +27,7 @@
   <img src="assets/demo.png" alt="Claude Desktop using whoop-mcp to check today's recovery — a 56% (yellow) recovery gauge with HRV, resting HR, sleep performance, and respiratory-rate cards, plus Claude's narrative breakdown" width="820">
 </p>
 
-48 tools, structured zod-validated outputs, bundled catalogs (372 exercises, 308 behaviors, 203 sports, 311 endpoints), write-safety harness, automatic Cognito token refresh, session-scoped catalog gate. TypeScript 6, Node 24, 178 tests.
+53 tools, structured zod-validated outputs, bundled catalogs (372 exercises, 308 behaviors, 203 sports, 311 endpoints), write-safety harness, automatic Cognito token refresh, session-scoped catalog gate. TypeScript 6, Node 24, 178 tests.
 
 > *Note: this works through Whoop's private iOS API rather than the public OAuth API. That isn't what Whoop's terms allow — see the [FAQ](#faq) if you want the full picture before installing.*
 
@@ -54,7 +54,7 @@ npm run db -- today                                             # query it, MCP-
 2. [Why this exists](#why-this-exists)
 3. [What it does](#what-it-does)
 4. [Architecture](#architecture)
-5. [The 48 tools](#the-48-tools)
+5. [The 53 tools](#the-48-tools)
 6. [Authentication](#authentication)
 7. [Write-safety harness](#write-safety-harness)
 8. [Bundled catalogs](#bundled-catalogs)
@@ -223,9 +223,10 @@ Compact summary. **Full per-tool reference (input shape · source endpoints · o
 | **Smart alarm** (2) | `whoop_smart_alarm` · `whoop_smart_alarm_set` ⚠️ |
 | **Social** (2) | `whoop_leaderboard` · `whoop_communities` |
 | **Settings** (4) | `whoop_hr_zones` · `whoop_hr_zones_set` ⚠️ · `whoop_profile_update` ⚠️ · `whoop_hidden_metric` ⚠️ |
+| **Health context** (5) | `whoop_health_monitor` · `whoop_healthspan` · `whoop_weekly_plan` · `whoop_stress_calendar` · `whoop_strap` |
 | **Escape hatch** (2) | `whoop_raw` · `whoop_endpoints` |
 
-**Total: 48** (32 reads + 14 writes + 2 escape hatches). For each tool's input args, source endpoint(s), and output shape, see [`TOOLS.md`](TOOLS.md).
+**Total: 53** (37 reads + 14 writes + 2 escape hatches). For each tool's input args, source endpoint(s), and output shape, see [`TOOLS.md`](TOOLS.md).
 
 ---
 

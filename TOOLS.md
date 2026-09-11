@@ -1,4 +1,4 @@
-# The 48 tools
+# The 53 tools
 
 > Full reference for every tool exposed by [whoop-mcp](README.md). Each entry has the input shape, source endpoint(s), and output shape. Catalog tools (`whoop_sports_catalog`, `whoop_lift_catalog`, `whoop_journal_catalog`) unlock their gated counterparts — see [README → Bundled catalogs](README.md#bundled-catalogs).
 
@@ -405,6 +405,43 @@ Show or hide BODY_COMP / HEALTHSPAN on your dashboard.
 - **Input:** `{metric: "BODY_COMP"|"HEALTHSPAN", action: "hide"|"show", confirm?}`
 - **Source:** `POST /users-service/v1/hidden-metrics/{metric}` (hide) OR `DELETE /users-service/v1/hidden-metrics/{metric}` (show)
 - **Output:** `{updated: true, metric, is_hidden}` (or preview)
+
+### Health context (5)
+
+Added 2026-09-11 so an agent has the full health picture for any day without `whoop_raw`. The
+sources are app UI trees; projections keep numbers and drop graph points, buttons, upsells.
+
+#### `whoop_health_monitor`
+Respiratory rate, SpO₂, RHR, HRV, skin temp: today's value, WHOOP's status vs your own 30-day
+typical range, the green/orange/red thresholds, and its one-line read. The "is anything off" check.
+- **Input:** `{}`
+- **Source:** `GET /coaching-service/v1/health/bff/monitor`
+- **Output:** `{metrics_in_range, metrics_with_values, highest_severity, metrics: [{metric, value, unit, status, vs_typical, typical_range_30d, thresholds:{green,orange,red}, note}]}`
+
+#### `whoop_healthspan`
+WHOOP Age, years vs calendar age, pace of aging (+ trend vs last week), health-monitor summary,
+today's high-stress hours.
+- **Input:** `{}`
+- **Source:** `GET /health-tab-bff/v1/health-tab`
+- **Output:** `{is_calibrating, whoop_age, years_difference, years_difference_label, pace_of_aging, pace_of_aging_trend, health_monitor:{summary,status,metrics}, stress_today:{high_stress,vs_typical,trend}, healthspan_date}`
+
+#### `whoop_weekly_plan`
+This week's plan: goals with progress and % accomplished.
+- **Input:** `{date?}` — any date in the week
+- **Source:** `GET /progression-service/v2/weekly-plan/home-tile/{date}`
+- **Output:** `{title, days_left, accomplished_pct, goals:[{id, title, goal_type, progress, current, total, percent, state}]}`
+
+#### `whoop_stress_calendar`
+Stress state per day for a month.
+- **Input:** `{date?}` — any date in the month
+- **Source:** `GET /health-service/v2/stress-bff/{date}/calendar`
+- **Output:** `{month, days:[{date, has_data, state}]}` — state `LOW_STRESS | MEDIUM_STRESS | HIGH_STRESS`
+
+#### `whoop_strap`
+Strap generation, serial, first/last seen — explains data gaps.
+- **Input:** `{}`
+- **Source:** `GET /membership-service/v1/straps`
+- **Output:** `{current:{generation, serial, first_seen, last_seen}, ordered, previous}`
 
 ### Escape hatch (2)
 

@@ -15,7 +15,8 @@ export function projectJournal(raw: unknown, date: string): JournalOutT {
     if (journal) {
       inputs = asArray(journal.tracked_behaviors);
       cycleId = asNumber(journal.cycle_id);
-      entryId = asString(journal.journal_entry_id);
+      // numeric in the v3 draft, string elsewhere
+      entryId = asString(journal.journal_entry_id) ?? (asNumber(journal.journal_entry_id) !== null ? String(asNumber(journal.journal_entry_id)) : null);
       notes = asString(journal.notes);
     } else {
       inputs = asArray(raw.records ?? raw.tracker_inputs ?? raw.items);
@@ -25,9 +26,13 @@ export function projectJournal(raw: unknown, date: string): JournalOutT {
   }
 
   const behaviors = inputs
-    .map((i) => {
-      if (!isObject(i)) return null;
-      const id = asNumber(i.behavior_tracker_id ?? i.behavior_id);
+    .map((raw) => {
+      if (!isObject(raw)) return null;
+      // v3 drafts nest each row as { behavior_tracker: {...}, tracker_input: {...} };
+      // older shapes are flat tracker inputs. Read the input, fall back to the tracker id.
+      const tracker = isObject(raw.behavior_tracker) ? raw.behavior_tracker as Record<string, unknown> : null;
+      const i = isObject(raw.tracker_input) ? raw.tracker_input as Record<string, unknown> : raw;
+      const id = asNumber(i.behavior_tracker_id ?? i.behavior_id ?? tracker?.id);
       if (id === null) return null;
       const meta = BEHAVIORS_BY_ID.get(id);
       return {

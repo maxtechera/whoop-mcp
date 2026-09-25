@@ -53,31 +53,22 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
     staticToken: opts.authToken,
   });
 
-  // One McpServer + transport pair per active session (MCP spec: a server can't
-  // be re-initialized once initialize() runs). Routed by mcp-session-id header.
-  const sessions = new Map<string, { server: McpServer; transport: StreamableHTTPServerTransport }>();
-
-  async function getOrCreateSession(
-    existingSessionId: string | undefined,
-  ): Promise<{ server: McpServer; transport: StreamableHTTPServerTransport }> {
-    if (existingSessionId) {
-      const existing = sessions.get(existingSessionId);
-      if (existing) return existing;
-    }
-    const newId = randomUUID();
-    const newServer = new McpServer({ name: "whoop", version: "1.2.0" });
-    registerTools(newServer, client);
-    const newTransport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => newId,
+  // Stateless: a fresh McpServer + transport per request, no mcp-session-id. In-memory
+  // sessions died on every Railway redeploy and connectors then failed every call with
+  // "Server not initialized" until they were re-added (health-mcp and finance-mcp hit this
+  // first). Building the server is a handful of registerTool calls; the WHOOP client is shared.
+  async function handleStateless(req: Request, res: Response): Promise<void> {
+    const server = new McpServer({ name: "whoop", version: "1.2.0" });
+    registerTools(server, client);
+    // `undefined` is what turns session tracking off at runtime; this SDK's types still
+    // declare the generator required, hence the cast.
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined as unknown as () => string,
       enableJsonResponse: true,
     });
-    newTransport.onclose = (): void => {
-      sessions.delete(newId);
-    };
-    await newServer.connect(newTransport as Parameters<typeof newServer.connect>[0]);
-    const entry = { server: newServer, transport: newTransport };
-    sessions.set(newId, entry);
-    return entry;
+    res.on("close", () => { void transport.close(); void server.close(); });
+    await server.connect(transport as Parameters<typeof server.connect>[0]);
+    await transport.handleRequest(req, res, req.body);
   }
 
   const app = express();
@@ -181,10 +172,7 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
 
   const mcpHandler = async (req: Request, res: Response): Promise<void> => {
     try {
-      const sessionIdHeader = req.headers["mcp-session-id"];
-      const sid = typeof sessionIdHeader === "string" ? sessionIdHeader : undefined;
-      const session = await getOrCreateSession(sid);
-      await session.transport.handleRequest(req, res, req.body);
+      await handleStateless(req, res);
     } catch (err) {
       console.error("[whoop-mcp] request error:", err);
       if (!res.headersSent) res.status(500).json({ error: "internal server error" });
@@ -199,6 +187,11 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
     console.error(`[whoop-mcp] listening on ${publicUrl} (bound ${host}:${port})`);
     console.error(`[whoop-mcp] health: GET /health`);
     console.error(`[whoop-mcp] auth: static bearer (MCP_AUTH_TOKEN)${oauthEnabled ? " + OAuth (web/mobile connectors)" : " — OAuth disabled (set AUTH_PASSWORD to enable)"}`);
+  });
+
+  httpServer.on("error", (err: NodeJS.ErrnoException) => {
+    console.error(`[whoop-mcp] cannot listen on ${port}: ${err.code ?? ""} ${err.message}`);
+    process.exit(1);
   });
 
   const close = (): void => {
